@@ -1,0 +1,164 @@
+name: Autograding Tests (Week5)
+on:
+  - push
+  - workflow_dispatch
+  - repository_dispatch
+
+permissions:
+  checks: write
+  actions: read
+  contents: read
+
+jobs:
+  run-autograding-tests:
+    runs-on: ubuntu-latest
+    if: github.actor != 'github-classroom[bot]'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # ===== Compile each question if present (don't fail job if one is missing) =====
+      - name: Compile each file (graceful)
+        run: |
+          set -e
+          build() {
+            file="$1.c"
+            out="$1"
+            flags="$2"
+            if [ -s "$file" ]; then
+              if ! gcc "$file" $flags -o "$out"; then
+                echo "::warning::Failed to compile $file (check that it defines int main())."
+              fi
+            else
+              echo "::warning::$file is missing or empty."
+            fi
+          }
+          build hw5-1
+          build hw5-2
+          build hw5-3
+          build ahw5-1
+
+      # Helper: each test checks for the binary first; if missing, echo marker so test fails gracefully (0 pts).
+
+      # ========== hw5-1 (Power multipliers) ==========
+      - name: hw5-1 Test 1
+        id: hw51_t1
+        uses: classroom-resources/autograding-io-grader@v1
+        with:
+          test-name: hw5-1 Test 1
+          command: bash -lc 'test -x ./hw5-1 && printf "%s\n" 40 | ./hw5-1 || echo "__MISSING_BINARY__"'
+          expected-output: |
+            1 2 4 8 16 32
+          comparison-method: exact
+          timeout: 10
+          max-score: 10
+
+      - name: hw5-1 Test 2
+        id: hw51_t2
+        uses: classroom-resources/autograding-io-grader@v1
+        with:
+          test-name: hw5-1 Test 2
+          command: bash -lc 'test -x ./hw5-1 && printf "%s\n" 30 | ./hw5-1 || echo "__MISSING_BINARY__"'
+          expected-output: |
+            1 2 4 8 16
+          comparison-method: exact
+          timeout: 10
+          max-score: 10
+
+      # ========== hw5-2 (Divisors) ==========
+      - name: hw5-2 Test 1
+        id: hw52_t1
+        uses: classroom-resources/autograding-io-grader@v1
+        with:
+          test-name: hw5-2 Test 1
+          command: bash -lc 'test -x ./hw5-2 && printf "%s\n" 70 | ./hw5-2 || echo "__MISSING_BINARY__"'
+          expected-output: |
+            1 2 5 7 10 14 35 70
+          comparison-method: exact
+          timeout: 10
+          max-score: 10
+
+      - name: hw5-2 Test 2
+        id: hw52_t2
+        uses: classroom-resources/autograding-io-grader@v1
+        with:
+          test-name: hw5-2 Test 2
+          command: bash -lc 'test -x ./hw5-2 && printf "%s\n" 35 | ./hw5-2 || echo "__MISSING_BINARY__"'
+          expected-output: |
+            1 5 7 35
+          comparison-method: exact
+          timeout: 10
+          max-score: 10
+
+      # ========== hw5-3 (Compare two inputs, repeat if same) ==========
+      - name: hw5-3 Test 1
+        id: hw53_t1
+        uses: classroom-resources/autograding-io-grader@v1
+        with:
+          test-name: hw5-3 Test 1
+          command: bash -lc 'test -x ./hw5-3 && printf "%s\n%s\n" "64 64" "100 200" | ./hw5-3 || echo "__MISSING_BINARY__"'
+          expected-output: |
+            Please enter two different numbers
+            Same, please enter two different numbers
+            You entered 100 and 200
+          comparison-method: exact
+          timeout: 10
+          max-score: 10
+
+      - name: hw5-3 Test 2
+        id: hw53_t2
+        uses: classroom-resources/autograding-io-grader@v1
+        with:
+          test-name: hw5-3 Test 2
+          command: bash -lc 'test -x ./hw5-3 && printf "%s\n%s\n" "640 640" "8 19" | ./hw5-3 || echo "__MISSING_BINARY__"'
+          expected-output: |
+            Please enter two different numbers
+            Same, please enter two different numbers
+            You entered 8 and 19
+          comparison-method: exact
+          timeout: 10
+          max-score: 10
+
+      # ========== ahw5-1 (Min steps n -> m using *2 or +1) ==========
+      - name: ahw5-1 Test 1
+        id: ahw51_t1
+        uses: classroom-resources/autograding-io-grader@v1
+        with:
+          test-name: ahw5-1 Test 1
+          command: bash -lc 'test -x ./ahw5-1 && printf "%s\n" "2 9" | ./ahw5-1 || echo "__MISSING_BINARY__"'
+          expected-output: |
+            Numbers of steps taken: 3
+          comparison-method: exact
+          timeout: 10
+          max-score: 10
+
+      - name: ahw5-1 Test 2
+        id: ahw51_t2
+        uses: classroom-resources/autograding-io-grader@v1
+        with:
+          test-name: ahw5-1 Test 2
+          command: bash -lc 'test -x ./ahw5-1 && printf "%s\n" "10 1" | ./ahw5-1 || echo "__MISSING_BINARY__"'
+          expected-output: |
+            Cannot transform 10 to 1
+          comparison-method: exact
+          timeout: 10
+          max-score: 10
+
+      # ===== Report all results =====
+      - name: Autograding Reporter
+        uses: classroom-resources/autograding-grading-reporter@v1
+        env:
+          HW51_T1_RESULTS: "${{ steps.hw51_t1.outputs.result }}"
+          HW51_T2_RESULTS: "${{ steps.hw51_t2.outputs.result }}"
+          HW52_T1_RESULTS: "${{ steps.hw52_t1.outputs.result }}"
+          HW52_T2_RESULTS: "${{ steps.hw52_t2.outputs.result }}"
+          HW53_T1_RESULTS: "${{ steps.hw53_t1.outputs.result }}"
+          HW53_T2_RESULTS: "${{ steps.hw53_t2.outputs.result }}"
+          AHW51_T1_RESULTS: "${{ steps.ahw51_t1.outputs.result }}"
+          AHW51_T2_RESULTS: "${{ steps.ahw51_t2.outputs.result }}"
+        with:
+          runners: >
+            hw51_t1, hw51_t2,
+            hw52_t1, hw52_t2,
+            hw53_t1, hw53_t2,
+            ahw51_t1, ahw51_t2
